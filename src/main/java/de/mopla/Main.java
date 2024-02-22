@@ -62,10 +62,16 @@ public class Main {
         // 4. Log out the vroom result in a human-readable way (you can ignore e.g. the 'geometry' value of each route
         result.ifPresent(Main::logResult);
 
-        // 5. You should notice that some requests were not scheduled successfully, what could you change on the setup
-        //    to make sure those trips are assigned?
-        //    hint 1: you can be creative and find solutions that are not feasible in reality
-        //    hint 2: read the vroom api again, maybe there are some tweaks to find there
+        // BONUS: Visualize the routes using the vroom demo server http://map.vroom-project.org/
+        //      - Look into the log output when running your code, you should see a line that says "Asking vroom (https://vroom.test.mopla.solutions/) with query: ..."
+        //      - Copy json file printed out there into a file and upload it to the vroom demo server: http://map.vroom-project.org/
+        //      - The demo server only accepts up to 100 tasks (one shipment is 2 tasks), so you have to limit the number of shipments to 50
+
+        // 5. Troubleshoot Unsuccessful Scheduling:
+        //    - Notice that some requests may not be scheduled successfully.
+        //    - Consider what changes could be made to the setup to ensure those trips are assigned.
+        //    - Be creative and explore solutions that might not be feasible in reality.
+        //    - Revisit the Vroom API documentation for potential tweaks and adjustments.
 
     }
 
