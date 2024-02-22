@@ -45,7 +45,23 @@ public final class Vehicle {
     public Vehicle(Integer id, String description, Location start,
                    Location end, List<Integer> capacity,
                    List<Integer> skills, TimeWindow timeWindow,
-                   List<Break> breaks, Double speedFactor, List<Step> steps) {
+                   List<Break> breaks, Double speedFactor) {
+        this.id = id;
+        this.description = description;
+        this.start = start;
+        this.end = end;
+        this.capacity = capacity;
+        this.skills = skills;
+        this.timeWindow = timeWindow;
+        this.breaks = breaks;
+        this.speedFactor = speedFactor;
+        this.steps = List.of();
+    }
+
+    public Vehicle(Integer id, String description, Location start,
+                        Location end, List<Integer> capacity,
+                        List<Integer> skills, TimeWindow timeWindow,
+                        List<Break> breaks, Double speedFactor, List<Step> steps) {
         this.id = id;
         this.description = description;
         this.start = start;

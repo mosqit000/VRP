@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import de.mopla.connector.request.serializer.CustomTimeWindowDeserializer;
 import de.mopla.connector.request.serializer.CustomTimeWindowSerializer;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Objects;
 
 @JsonSerialize(using = CustomTimeWindowSerializer.class)
@@ -13,10 +16,22 @@ public final class TimeWindow {
     private Long start;
     private Long end;
 
+    /**
+     * Creates a time-window
+     * @param start start in epoch seconds
+     * @param end end in epoch seconds
+     */
     public TimeWindow(Long start, Long end) {
         this.start = start;
         this.end = end;
     }
+
+    public TimeWindow(LocalDateTime start, LocalDateTime end) {
+        this.start = start.atZone(ZoneId.of("Europe/Berlin")).toEpochSecond();
+        this.end = end.atZone(ZoneId.of("Europe/Berlin")).toEpochSecond();
+    }
+
+    // todo make it easier: constructor with localdatetime
 
     @Override
     public boolean equals(Object obj) {

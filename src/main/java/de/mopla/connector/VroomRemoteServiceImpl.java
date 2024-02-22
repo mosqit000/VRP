@@ -5,8 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import de.mopla.connector.request.VroomQuery;
 import de.mopla.connector.response.VroomOutput;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
@@ -32,31 +36,23 @@ public class VroomRemoteServiceImpl implements VroomRemoteService {
      */
     public Optional<VroomOutput> query(VroomQuery query) {
         try {
-            final String data = mapper
+            final String jsonBody = mapper
                     .disable(SerializationFeature.WRITE_SINGLE_ELEM_ARRAYS_UNWRAPPED)
                     .writeValueAsString(query);
-            System.out.println("Asking vroom (" + url + ") with query: \n" + data);
+            System.out.println("Asking vroom (" + url + ") with query: \n" + jsonBody);
 
-            // Create an instance of HttpClient
             CloseableHttpClient httpClient = HttpClients.createDefault();
-
-            // Create a GET request object
-            HttpGet request = new HttpGet(url);
-
-            // Execute the request and get the response
-            CloseableHttpResponse response = httpClient.execute(request);
-
-            // Extract the response body as a string
+            HttpPost httpPost = new HttpPost(url);
+            httpPost.setHeader("Content-Type", "application/json");
+            httpPost.setEntity(new StringEntity(jsonBody));
+            HttpResponse response = httpClient.execute(httpPost);
             String responseBody = EntityUtils.toString(response.getEntity());
-
-            // Print the response body
-            System.out.println(responseBody);
-
-
-            // Close the HttpClient and release any system resources it holds
             httpClient.close();
 
+            System.out.println("Vroom answered (" + url + "): \n" + responseBody);
+
             final var result = mapper.readValue(responseBody, VroomOutput.class);
+            System.out.println(result);
             return Optional.of(result);
         } catch (IOException e) {
             throw new RuntimeException(e);

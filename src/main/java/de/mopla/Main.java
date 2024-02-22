@@ -2,49 +2,211 @@ package de.mopla;
 
 import de.mopla.connector.VroomRemoteService;
 import de.mopla.connector.VroomRemoteServiceImpl;
-import de.mopla.connector.request.Shipment;
-import de.mopla.connector.request.VroomQuery;
+import de.mopla.connector.request.*;
+import de.mopla.connector.response.Route;
+import de.mopla.connector.response.Step;
+import de.mopla.connector.response.Violation;
+import de.mopla.connector.response.VroomOutput;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 
+import java.io.*;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-// Press Shift twice to open the Search Everywhere dialog and type `show whitespaces`,
-// then press Enter. You can now see whitespace characters in your code.
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
+        // Welcome to the world of logistics and journey optimization! In this exercise, you'll dive into the exciting
+        // realm of route planning. Your mission is to orchestrate the most efficient journeys for a fleet of vehicles
+        // servicing customer trip requests.
 
-        // 1. find and read in the file ...csv with trip requests from customers
+        // 0: For the calculation of vehicle routes, you can use the VroomRemoteService.
+        //    Read the documentation of VROOM on how to use this service: https://github.com/VROOM-Project/vroom/blob/master/docs/API.md
 
-        // 2. parse the trip requests to shipments
+        // 1. Begin by extracting information from the "trip_requests.csv" file.
+        //    This file includes time-windows of the start and goal, passenger count and the start and goal coordinates of
+        //    250 fictional route requests for one day.
+        //    to note: for entering or exiting a vehicle passengers don't need any time (setup = 0, service = 0)
+        final List<Shipment> shipments = readShipments();
 
-        final var s1 = new Shipment(List.of(1,1), );
+        // 2. Your available fleet consists of 20 vehicles in total, distributed in two different cities.
+        //    Create 10 vehicles for each of the towns, Köthen and Gräfenheinichen.
+        //    10 vehicles should start in Köthen (51.74726291640497, 11.955642553636217)
+        //    - 5 of those work in between 3:00 and 13:00
+        //    - 5 of those work in between 12:00 and 22:00
+        //    10 vehicles should start in Gräfenheinichen (51.72542241470092, 12.459856484026506)
+        //    - 5 of those work in between 3:00 and 13:00
+        //    - 5 of those work in between 12:00 and 22:00
+        //    for all vehicles:
+        //    - they do not need a break
+        //    - they have a capacity of 7 passengers
+        //    - they need to return to their start location at the end of the day
+        //    - the speed-factor is 1
+        final List<Vehicle> vehicles = createVehicles();
 
-        // 3. create vehicles
-
-        // 4. ask vroom
-
+        // 3. Utilize the VroomRemoteService to calculate optimized routes. Understand how the service efficiently
+        //    combines vehicle details and customer requests to generate practical routes.
+        //    Calculating this can take up to 30 seconds, make sure to have a internet connection when calling this
         VroomRemoteService vroom = new VroomRemoteServiceImpl();
+        VroomQuery query = new VroomQuery(vehicles, List.of(), shipments);
+        final var result = vroom.query(query);
 
-        vroom.query(new VroomQuery(List.of(s1)));
+        // 4. Log out the vroom result in a human-readable way (you can ignore e.g. the 'geometry' value of each route
+        result.ifPresent(Main::logResult);
 
-        // 5. analyze vroom output
+        // 5. You should notice that some requests were not scheduled successfully, what could you change on the setup
+        //    to make sure those trips are assigned?
+        //    hint 1: you can be creative and find solutions that are not feasible in reality
+        //    hint 2: read the vroom api again, maybe there are some tweaks to find there
 
-        // create vehicles
+    }
 
-        // 3. ask vroom
+    private static void logResult(VroomOutput result) {
+        System.out.println("Vroom Output:");
+        System.out.println("Code: " + result.getCode());
+        System.out.println("Error: " + result.getError());
 
+        if (result.getRoutes() != null) {
+            for (Route route : result.getRoutes()) {
+                System.out.println("\nRoute Details:");
+                System.out.println("Vehicle: " + route.getVehicle());
+                System.out.println("Cost: " + route.getCost());
+                System.out.println("Setup: " + route.getSetup());
+                System.out.println("Duration: " + route.getDuration());
+                System.out.println("Waiting Time: " + route.getWaitingTime());
+                System.out.println("Distance: " + route.getDistance());
+                System.out.println("Priority: " + route.getPriority());
+                System.out.println("Description: " + route.getDescription());
 
+                // Print steps details
+                System.out.println("Steps:");
+                for (Step step : route.getSteps()) {
+                    System.out.println("  " + step.getLocation() + " " + step.getType());
 
-        // Press Alt+Eingabe with your caret at the highlighted text to see how
-        // IntelliJ IDEA suggests fixing it.
-        System.out.printf("Hello and welcome!");
-
-        // Press Umschalt+F10 or click the green arrow button in the gutter to run the code.
-        for (int i = 1; i <= 5; i++) {
-
-            // Press Umschalt+F9 to start debugging your code. We have set one breakpoint
-            // for you, but you can always add more by pressing Strg+F8.
-            System.out.println("i = " + i);
+                    // Add more details if needed
+                }
+            }
         }
+
+        System.out.println("\n Unassigned: " + result.getUnassigned().size());
+    }
+
+    private static ArrayList<Vehicle> createVehicles() {
+        ArrayList<Vehicle> vehicles = new ArrayList<>();
+
+        // Create 10 vehicles starting in Köthen
+        for (int i = 1; i <= 10; i++) {
+            Location startLocation = new Location(51.74726291640497, 11.955642553636217);
+
+            TimeWindow timeWindow;
+            if (i <= 5) {
+                timeWindow = new TimeWindow(Instant.parse("2024-02-20T03:00:00Z")
+                        .atZone(ZoneId.of("Europe/Berlin")).toEpochSecond(),
+                        Instant.parse("2024-02-20T13:00:00Z")
+                                .atZone(ZoneId.of("Europe/Berlin")).toEpochSecond());
+            } else {
+                timeWindow = new TimeWindow(Instant.parse("2024-02-20T12:00:00Z")
+                        .atZone(ZoneId.of("Europe/Berlin")).toEpochSecond(),
+                        Instant.parse("2024-02-20T22:00:00Z")
+                                .atZone(ZoneId.of("Europe/Berlin")).toEpochSecond());
+            }
+
+            Vehicle vehicle = new Vehicle(i, "Vehicle " + i, startLocation, startLocation,
+                    List.of(7), List.of(), timeWindow, List.of(), 1d);
+            vehicles.add(vehicle);
+        }
+
+        // Create 10 vehicles starting in Gräfenheinichen
+        for (int i = 11; i <= 20; i++) {
+            Location startLocation = new Location(51.72542241470092, 12.459856484026506);
+
+            TimeWindow timeWindow;
+            if (i <= 15) {
+                timeWindow = new TimeWindow(Instant.parse("2024-02-20T03:00:00Z")
+                        .atZone(ZoneId.of("Europe/Berlin")).toEpochSecond(),
+                        Instant.parse("2024-02-20T13:00:00Z")
+                                .atZone(ZoneId.of("Europe/Berlin")).toEpochSecond());
+            } else {
+                timeWindow = new TimeWindow(Instant.parse("2024-02-20T12:00:00Z")
+                        .atZone(ZoneId.of("Europe/Berlin")).toEpochSecond(),
+                        Instant.parse("2024-02-20T22:00:00Z")
+                                .atZone(ZoneId.of("Europe/Berlin")).toEpochSecond());
+            }
+
+            Vehicle vehicle = new Vehicle(i, "Vehicle " + i, startLocation, startLocation,
+                    List.of(7), List.of(), timeWindow, List.of(), 1d);
+            vehicles.add(vehicle);
+        }
+
+        return vehicles;
+    }
+
+    private static ArrayList<Shipment> readShipments() {
+        int id = 0;
+        final var shipments = new ArrayList<Shipment>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+        try (InputStream inputStream = Main.class.getClassLoader().getResourceAsStream("trip_requests.csv");
+             InputStreamReader reader = new InputStreamReader(inputStream);
+             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withHeader())) {
+
+            for (CSVRecord csvRecord : csvParser) {
+                String startTimeWindowStartStr = csvRecord.get("start_timewindow_start");
+                String startTimeWindowEndStr = csvRecord.get("start_timewindow_end");
+                String endTimeWindowStartStr = csvRecord.get("end_timewindow_start");
+                String endTimeWindowEndStr = csvRecord.get("end_timewindow_end");
+
+                // Parse date-time strings to LocalDateTime using custom formatter
+                LocalDateTime startTimeWindowStart = LocalDateTime.parse(startTimeWindowStartStr, formatter);
+                LocalDateTime startTimeWindowEnd = LocalDateTime.parse(startTimeWindowEndStr, formatter);
+                LocalDateTime endTimeWindowStart = LocalDateTime.parse(endTimeWindowStartStr, formatter);
+                LocalDateTime endTimeWindowEnd = LocalDateTime.parse(endTimeWindowEndStr, formatter);
+
+                final var passengerCount = Integer.parseInt(csvRecord.get("passenger_count"));
+                final var startLatitude = Double.parseDouble(csvRecord.get("from_location_latitude"));
+                final var startLongitude = Double.parseDouble(csvRecord.get("from_location_longitude"));
+                final var startLabel = csvRecord.get("from_location_label");
+                final var goalLatitude = Double.parseDouble(csvRecord.get("to_location_latitude"));
+                final var goalLongitude = Double.parseDouble(csvRecord.get("to_location_longitude"));
+                final var goalLabel = csvRecord.get("to_location_label");
+
+                final var pickup = new ShipmentStep(
+                        id++,
+                        0,
+                        0,
+                        new Location(startLatitude, startLongitude),
+                        List.of(new TimeWindow(startTimeWindowStart, startTimeWindowEnd)),
+                        startLabel
+                );
+                final var delivery = new ShipmentStep(
+                        id++,
+                        0,
+                        0,
+                        new Location(goalLatitude, goalLongitude),
+                        List.of(new TimeWindow(endTimeWindowStart, endTimeWindowEnd)),
+                        goalLabel
+                );
+
+                shipments.add(
+                        new Shipment(
+                                List.of(passengerCount),
+                                List.of(),
+                                1,
+                                pickup,
+                                delivery
+                        ));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return shipments;
     }
 }
