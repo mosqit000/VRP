@@ -5,7 +5,6 @@ import de.mopla.connector.VroomRemoteServiceImpl;
 import de.mopla.connector.request.*;
 import de.mopla.connector.response.Route;
 import de.mopla.connector.response.Step;
-import de.mopla.connector.response.Violation;
 import de.mopla.connector.response.VroomOutput;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -15,13 +14,12 @@ import java.io.*;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class Main {
+
     public static void main(String[] args) throws IOException {
 
         // Welcome to the world of logistics and journey optimization! In this exercise, you'll dive into the exciting
@@ -52,7 +50,7 @@ public class Main {
         //    - the speed-factor is 1
         final List<Vehicle> vehicles = createVehicles();
 
-        // 3. Utilize the VroomRemoteService to calculate optimized routes. Understand how the service efficiently
+        // 3. Use the VroomRemoteService to calculate optimized routes. Understand how the service efficiently
         //    combines vehicle details and customer requests to generate practical routes.
         //    Calculating this can take up to 30 seconds, make sure to have a internet connection when calling this
         VroomRemoteService vroom = new VroomRemoteServiceImpl();
@@ -67,7 +65,7 @@ public class Main {
         //      - Copy json file printed out there into a file and upload it to the vroom demo server: http://map.vroom-project.org/
         //      - The demo server only accepts up to 100 tasks (one shipment is 2 tasks), so you have to limit the number of shipments to 50
 
-        // 5. Troubleshoot Unsuccessful Scheduling:
+        // BONUS: Troubleshoot Unsuccessful Scheduling:
         //    - Notice that some requests may not be scheduled successfully.
         //    - Consider what changes could be made to the setup to ensure those trips are assigned.
         //    - Be creative and explore solutions that might not be feasible in reality.
