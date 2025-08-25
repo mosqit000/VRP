@@ -3,15 +3,18 @@ package de.mopla;
 import de.mopla.connector.VroomRemoteService;
 import de.mopla.connector.VroomRemoteServiceImpl;
 import de.mopla.connector.request.*;
+import de.mopla.connector.request.RouteValidation.EVRouteValidator;
+import de.mopla.connector.request.RouteValidation.RouteValidator;
+import de.mopla.connector.request.RouteValidation.ValidationResult;
 import de.mopla.connector.request.VehicleFactory.EVFactory;
 import de.mopla.connector.request.VehicleFactory.StandardVehicleFactory;
 import de.mopla.connector.request.VehicleFactory.VehicleFactory;
-import de.mopla.connector.request.Vroom.EVRoutingStrategy;
-import de.mopla.connector.request.Vroom.RoutingStrategy;
-import de.mopla.connector.request.Vroom.VroomQuery;
+import de.mopla.connector.request.Vroom.*;
 import de.mopla.connector.response.Route;
 import de.mopla.connector.response.Step;
+import de.mopla.connector.response.UnassignedTask;
 import de.mopla.connector.response.VroomOutput;
+import de.mopla.connector.service.BatteryStateTracker;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -25,6 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
+
+
+    static BatteryStateTracker tracker;
 
     public static void main(String[] args) throws IOException {
 
@@ -54,25 +60,51 @@ public class Main {
         //    - they have a capacity of 7 passengers
         //    - they need to return to their start location at the end of the day
         //    - the speed-factor is 1
+
         final List<Vehicle> vehicles = createVehicles();
+
+        tracker = new BatteryStateTracker(); // this is to track state
+        // in real life
+        // 1. if we commit to this solution we need to use its functionality
+        // similar to evict cache (update when anything affects, add to pool, remove from pool)
+        // 2. a stream and data messaging management would be the better choice
+
+        final RouteValidator evRouteValidator = new EVRouteValidator(
+                tracker.getVehicleBatteryStates(),
+                0.2, // hypothetical
+                20  // should be enough to reach a charging station from anywhere
+        );
 
         // 3. Use the VroomRemoteService to calculate optimized routes. Understand how the service efficiently
         //    combines vehicle details and customer requests to generate practical routes.
         //    Calculating this can take up to 30 seconds, make sure to have a internet connection when calling this
         VroomRemoteService vroom = new VroomRemoteServiceImpl();
 
-        RoutingStrategy strategy = new EVRoutingStrategy(List.of(
+        RoutingStrategy strategy = new EVRoutingStrategy(
+                List.of(
                 new Location(51.76487, 12.639522),
-                new Location(51.80051, 12.741775)
+      new Location(51.80051, 12.741775)
+
         ));
         VroomQuery query = strategy.buildQuery(vehicles,List.of(), shipments);
+
 
 
        // VroomQuery query = new VroomQuery(vehicles, List.of(), shipments);
         final var result = vroom.query(query);
 
+
+
         // 4. Log out the vroom result in a human-readable way (you can ignore e.g. the 'geometry' value of each route
         result.ifPresent(Main::logResult);
+
+        if(result.isPresent()) {
+            System.out.println("-------  modified result -----");
+            System.out.println("-------  broadcast this to vehicles -----");
+            System.out.println("-------  and replan the rest based on trigger -----");
+            var modifiedResult = validate(result.get(), evRouteValidator);
+            logResult(modifiedResult);
+        }
 
         // BONUS: Visualize the routes using the vroom demo server http://map.vroom-project.org/
         //      - Look into the log output when running your code, you should see a line that says "Asking vroom (https://vroom.test.mopla.solutions/) with query: ..."
@@ -107,14 +139,19 @@ public class Main {
                 // Print steps details
                 System.out.println("Steps:");
                 for (Step step : route.getSteps()) {
+
                     System.out.println("  " + step.getLocation() + " " + step.getType() +
-                            ("break".equals(step.getType()) ?  " (service " + step.getDuration() + "s)" : ""));
+                            ("break".equals(step.getType()) ?  " (service " + step.getDuration() + "s)" : "") );
                     // Add more details if needed
                 }
             }
         }
 
         System.out.println("\n Unassigned: " + result.getUnassigned().size());
+        for (UnassignedTask task : result.getUnassigned()){
+             System.out.println(task.id() + " " +  task.description() + " " + task.type());
+        }
+
     }
 
     private static ArrayList<Vehicle> createVehicles() {
@@ -234,21 +271,29 @@ public class Main {
                         ));
             }
 
-//            for(int i = 1; i <= 40 ; i++){
-//                shipments.add(
-//                        new Shipment(
-//                                List.of(7,-180),
-//                                List.of(),
-//                                1,
-//                                pickup,
-//                                delivery
-//                        ));
-//            }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         return shipments;
+    }
+
+    private static VroomOutput validate (VroomOutput result , RouteValidator evRouteValidator){
+        List<Route> newRoutes = new ArrayList<>();
+        List<UnassignedTask> unassignedTasks = new ArrayList<>();
+        for(Route route : result.getRoutes()){
+                ValidationResult validationResult = evRouteValidator.insertChargingStops(
+                       route);
+                newRoutes.add(validationResult.getRoute());
+                unassignedTasks.addAll(validationResult.getUnassignedTaskList());
+        }
+        VroomOutput newOutput = new VroomOutput(
+                result.getCode(), // should be modified to somthing declartive that it has been modified
+                result.getError(), // same applies for things like summary
+                result.getSummary(),
+                unassignedTasks,
+                newRoutes
+        );
+        return newOutput;
     }
 }

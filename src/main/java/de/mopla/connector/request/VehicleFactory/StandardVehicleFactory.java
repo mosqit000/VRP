@@ -12,8 +12,7 @@ public class StandardVehicleFactory implements VehicleFactory {
     public Vehicle createVehicle(int id, Location start, TimeWindow timeWindow) {
         return new Vehicle(id, "Vehicle " + id,
                 start, start,
-                List.of(7,0), List.of(), timeWindow, List.of(),
-                1d,
-                Integer.MAX_VALUE);
+                List.of(7,Integer.MAX_VALUE), List.of(), timeWindow, List.of(),
+                1d);
     }
 }

@@ -1,20 +1,21 @@
 package de.mopla.connector.request;
 
-public class EVehicle implements VehicleComponent{
-
+public class EVehicle implements VehicleComponent {
     private final Vehicle baseVehicle;
-    private final double batteryKm;     // max capacity
-    private double currentCharge;       // curr consumption
-    private final double consumptionPerKm;
-    private final double chargingSpeedPerMin;
+    private final double batteryCapacityKwh;
+    private final double maxRangeKm;
+    private final double consumptionKwhPerKm;
+    private final double chargingSpeedKwhPerMin;
+    private double currentChargeKwh;
 
-    public EVehicle(Vehicle baseVehicle, double batteryKm,
-                    double consumptionPerKm, double chargingSpeedPerMin) {
-
+    public EVehicle(Vehicle baseVehicle, double maxRangeKm,
+                    double consumptionKwhPerKm, double chargingSpeedKwhPerMin) {
         this.baseVehicle = baseVehicle;
-        this.batteryKm = batteryKm;
-        this.consumptionPerKm = consumptionPerKm;
-        this.chargingSpeedPerMin = chargingSpeedPerMin;
+        this.maxRangeKm = maxRangeKm;
+        this.consumptionKwhPerKm = consumptionKwhPerKm;
+        this.chargingSpeedKwhPerMin = chargingSpeedKwhPerMin;
+        this.batteryCapacityKwh = maxRangeKm * consumptionKwhPerKm;
+        this.currentChargeKwh = batteryCapacityKwh;
     }
 
     @Override
@@ -22,17 +23,46 @@ public class EVehicle implements VehicleComponent{
         return this.baseVehicle;
     }
 
-    public double getBatteryKm() { return batteryKm; }
-    public double getConsumptionPerKm() { return consumptionPerKm; }
-    public double getChargingSpeedPerMin() { return chargingSpeedPerMin; }
+    public double getBatteryCapacityKwh() { return batteryCapacityKwh; }
+    public double getMaxRangeKm() { return maxRangeKm; }
+    public double getConsumptionKwhPerKm() { return consumptionKwhPerKm; }
+    public double getChargingSpeedKwhPerMin() { return chargingSpeedKwhPerMin; }
+    public double getCurrentChargeKwh() { return currentChargeKwh; }
 
 
-    public void consume(double distanceKm) {
-        currentCharge -= distanceKm * consumptionPerKm;
+    public double getRemainingRangeKm() {
+        return currentChargeKwh / consumptionKwhPerKm;
     }
 
-    public void charge(double kWh) {
-        currentCharge = Math.min(batteryKm, currentCharge + kWh);
+    public double getBatteryPercentage() {
+        return (currentChargeKwh / batteryCapacityKwh) * 100;
     }
 
+    public boolean canTravelDistance(double distanceKm) {
+        return getRemainingRangeKm() >= distanceKm;
+    }
+
+    public void consumeEnergy(double distanceKm) {
+        double consumption = distanceKm * consumptionKwhPerKm;
+        currentChargeKwh = Math.max(0, currentChargeKwh - consumption);
+    }
+
+    public void addCharge(double kWh) {
+        currentChargeKwh = Math.min(batteryCapacityKwh, currentChargeKwh + kWh);
+    }
+
+    public void chargeFully() {
+        currentChargeKwh = batteryCapacityKwh;
+    }
+
+    public double getChargingTimeToFull() {
+        double neededCharge = batteryCapacityKwh - currentChargeKwh;
+        return neededCharge / chargingSpeedKwhPerMin;
+    }
+
+    public double getChargingTimeForRange(double targetRangeKm) {
+        double targetCharge = targetRangeKm * consumptionKwhPerKm;
+        double neededCharge = Math.max(0, targetCharge - currentChargeKwh);
+        return neededCharge / chargingSpeedKwhPerMin;
+    }
 }
