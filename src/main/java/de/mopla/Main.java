@@ -104,6 +104,13 @@ public class Main {
             System.out.println("-------  and replan the rest based on trigger -----");
             var modifiedResult = validate(result.get(), evRouteValidator);
             logResult(modifiedResult);
+
+            // now should send new schedule to vehicles
+            // and re-plan with new time windows (updated accounting for recharging)
+            // 1. could bump all remaining time windows by max time of charging
+            // 2. wait until vehicles are charged and then re-plan (more productive - harder)
+
+
         }
 
         // BONUS: Visualize the routes using the vroom demo server http://map.vroom-project.org/
