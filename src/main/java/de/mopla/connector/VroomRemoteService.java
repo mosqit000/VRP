@@ -1,6 +1,6 @@
 package de.mopla.connector;
 
-import de.mopla.connector.request.VroomQuery;
+import de.mopla.connector.request.Vroom.VroomQuery;
 import de.mopla.connector.response.VroomOutput;
 
 import java.util.Optional;

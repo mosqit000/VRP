@@ -3,6 +3,12 @@ package de.mopla;
 import de.mopla.connector.VroomRemoteService;
 import de.mopla.connector.VroomRemoteServiceImpl;
 import de.mopla.connector.request.*;
+import de.mopla.connector.request.VehicleFactory.EVFactory;
+import de.mopla.connector.request.VehicleFactory.StandardVehicleFactory;
+import de.mopla.connector.request.VehicleFactory.VehicleFactory;
+import de.mopla.connector.request.Vroom.EVRoutingStrategy;
+import de.mopla.connector.request.Vroom.RoutingStrategy;
+import de.mopla.connector.request.Vroom.VroomQuery;
 import de.mopla.connector.response.Route;
 import de.mopla.connector.response.Step;
 import de.mopla.connector.response.VroomOutput;
@@ -54,7 +60,15 @@ public class Main {
         //    combines vehicle details and customer requests to generate practical routes.
         //    Calculating this can take up to 30 seconds, make sure to have a internet connection when calling this
         VroomRemoteService vroom = new VroomRemoteServiceImpl();
-        VroomQuery query = new VroomQuery(vehicles, List.of(), shipments);
+
+        RoutingStrategy strategy = new EVRoutingStrategy(List.of(
+                new Location(51.76487, 12.639522),
+                new Location(51.80051, 12.741775)
+        ));
+        VroomQuery query = strategy.buildQuery(vehicles,List.of(), shipments);
+
+
+       // VroomQuery query = new VroomQuery(vehicles, List.of(), shipments);
         final var result = vroom.query(query);
 
         // 4. Log out the vroom result in a human-readable way (you can ignore e.g. the 'geometry' value of each route
@@ -93,8 +107,8 @@ public class Main {
                 // Print steps details
                 System.out.println("Steps:");
                 for (Step step : route.getSteps()) {
-                    System.out.println("  " + step.getLocation() + " " + step.getType());
-
+                    System.out.println("  " + step.getLocation() + " " + step.getType() +
+                            ("break".equals(step.getType()) ?  " (service " + step.getDuration() + "s)" : ""));
                     // Add more details if needed
                 }
             }
@@ -105,6 +119,10 @@ public class Main {
 
     private static ArrayList<Vehicle> createVehicles() {
         ArrayList<Vehicle> vehicles = new ArrayList<>();
+
+        VehicleFactory normalFactory = new StandardVehicleFactory();
+        VehicleFactory evFactory = new EVFactory();
+
 
         // Create 10 vehicles starting in Köthen
         for (int i = 1; i <= 10; i++) {
@@ -123,8 +141,12 @@ public class Main {
                                 .atZone(ZoneId.of("Europe/Berlin")).toEpochSecond());
             }
 
-            Vehicle vehicle = new Vehicle(i, "Vehicle " + i, startLocation, startLocation,
-                    List.of(7), List.of(), timeWindow, List.of(), 1d);
+            Vehicle vehicle = (i % 2 == 0)
+                    ? evFactory.createVehicle(i, startLocation, timeWindow)
+                    : normalFactory.createVehicle(i, startLocation, timeWindow);
+
+//            Vehicle vehicle = new Vehicle(i, "Vehicle " + i, startLocation, startLocation,
+//                    List.of(7), List.of(), timeWindow, List.of(), 1d);
             vehicles.add(vehicle);
         }
 
@@ -145,8 +167,12 @@ public class Main {
                                 .atZone(ZoneId.of("Europe/Berlin")).toEpochSecond());
             }
 
-            Vehicle vehicle = new Vehicle(i, "Vehicle " + i, startLocation, startLocation,
-                    List.of(7), List.of(), timeWindow, List.of(), 1d);
+            Vehicle vehicle = (i % 2 == 0)
+                    ? evFactory.createVehicle(i, startLocation, timeWindow)
+                    : normalFactory.createVehicle(i, startLocation, timeWindow);
+
+//            Vehicle vehicle = new Vehicle(i, "Vehicle " + i, startLocation, startLocation,
+//                    List.of(7), List.of(), timeWindow, List.of(), 1d);
             vehicles.add(vehicle);
         }
 
@@ -200,13 +226,25 @@ public class Main {
 
                 shipments.add(
                         new Shipment(
-                                List.of(passengerCount),
+                                List.of(passengerCount,0),
                                 List.of(),
                                 1,
                                 pickup,
                                 delivery
                         ));
             }
+
+//            for(int i = 1; i <= 40 ; i++){
+//                shipments.add(
+//                        new Shipment(
+//                                List.of(7,-180),
+//                                List.of(),
+//                                1,
+//                                pickup,
+//                                delivery
+//                        ));
+//            }
+
         } catch (IOException e) {
             e.printStackTrace();
         }

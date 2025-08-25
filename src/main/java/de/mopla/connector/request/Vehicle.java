@@ -24,6 +24,9 @@ public final class Vehicle {
     @JsonProperty("speed_factor") private final Double speedFactor;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonProperty private final List<Step> steps;
+    @JsonProperty("max_distance")
+    private final Integer maxDistance;
+
 
     @JsonCreator
     public Vehicle(@JsonProperty("id") Integer id,
@@ -34,18 +37,21 @@ public final class Vehicle {
                    @JsonProperty("skills") List<Integer> skills,
                    @JsonProperty("time_window") Long[] timeWindow,
                    @JsonProperty("breaks") List<Break> breaks,
-                   @JsonProperty("speed_factor") Double speedFactor) {
+                   @JsonProperty("speed_factor") Double speedFactor,
+                   @JsonProperty("max_distance") Integer maxDistance) {
         this(id, description,
             new Location(start[1], start[0]), // careful: vroom takes longitude first
             new Location(end[1], end[0]),     // careful: vroom takes longitude first
             capacity, skills,
-            new TimeWindow(timeWindow[0], timeWindow[1]), breaks, speedFactor, null);
+            new TimeWindow(timeWindow[0], timeWindow[1]), breaks,
+                speedFactor,
+                null);
     }
 
     public Vehicle(Integer id, String description, Location start,
                    Location end, List<Integer> capacity,
                    List<Integer> skills, TimeWindow timeWindow,
-                   List<Break> breaks, Double speedFactor) {
+                   List<Break> breaks, Double speedFactor, Integer maxDistance) {
         this.id = id;
         this.description = description;
         this.start = start;
@@ -56,12 +62,13 @@ public final class Vehicle {
         this.breaks = breaks;
         this.speedFactor = speedFactor;
         this.steps = List.of();
+        this.maxDistance = maxDistance;
     }
 
     public Vehicle(Integer id, String description, Location start,
                         Location end, List<Integer> capacity,
                         List<Integer> skills, TimeWindow timeWindow,
-                        List<Break> breaks, Double speedFactor, List<Step> steps) {
+                        List<Break> breaks, Double speedFactor, List<Step> steps, Integer maxDistance) {
         this.id = id;
         this.description = description;
         this.start = start;
@@ -72,6 +79,7 @@ public final class Vehicle {
         this.breaks = breaks;
         this.speedFactor = speedFactor;
         this.steps = steps;
+        this.maxDistance = maxDistance;
     }
 
     @Override
@@ -139,6 +147,8 @@ public final class Vehicle {
         return speedFactor;
     }
 
+    public Integer getMaxDistance() {return maxDistance; }
+
     @JsonIgnore
     public Instant getStartTime(){
         return Instant.ofEpochSecond(timeWindow.getStart());
@@ -155,12 +165,12 @@ public final class Vehicle {
 
     @Transient
     public Vehicle withNewId(int id) {
-        return new Vehicle(id, description, start, end, capacity, skills, timeWindow, breaks, speedFactor, steps);
+        return new Vehicle(id, description, start, end, capacity, skills, timeWindow, breaks, speedFactor, steps , maxDistance);
     }
 
     @Transient
     public Vehicle withNewSteps(List<Step> steps) {
-        return new Vehicle(id, description, start, end, capacity, skills, timeWindow, breaks, speedFactor, steps);
+        return new Vehicle(id, description, start, end, capacity, skills, timeWindow, breaks, speedFactor, steps, maxDistance);
     }
 
     @Transient

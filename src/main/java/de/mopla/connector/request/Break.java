@@ -12,16 +12,19 @@ public final class Break {
     @JsonProperty("time_windows") private final List<TimeWindow> timeWindows;
     @JsonProperty private final Long service;
     @JsonProperty("max_load") private final List<Integer> maxLoad;
+    @JsonProperty private final List<Double> location;
 
     @JsonCreator
     public Break(@JsonProperty("id") Integer id,
                  @JsonProperty("time_windows") List<TimeWindow> timeWindows,
                  @JsonProperty("service") Long service,
-                 @JsonProperty("max_load") List<Integer> maxLoad) {
+                 @JsonProperty("max_load") List<Integer> maxLoad,
+                 @JsonProperty("location") List<Double> location) {
         this.id = id;
         this.timeWindows = timeWindows;
         this.service = service;
         this.maxLoad = maxLoad;
+        this.location = location;
     }
 
     public Integer getId() {
@@ -39,6 +42,8 @@ public final class Break {
     public List<Integer> getMaxLoad() {
         return maxLoad;
     }
+
+    public List<Double> getLocation() { return location;}
 
     @Override
     public boolean equals(Object o) {

@@ -1,7 +1,10 @@
-package de.mopla.connector.request;
+package de.mopla.connector.request.Vroom;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import de.mopla.connector.request.Job;
+import de.mopla.connector.request.Shipment;
+import de.mopla.connector.request.Vehicle;
 
 import java.util.List;
 
